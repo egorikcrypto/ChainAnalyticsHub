@@ -1,0 +1,133 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import requests
+
+class ChainAnalyticsHub:
+    def __init__(self, api_url: str):
+        self.api_url = api_url
+        self.data = pd.DataFrame()
+
+    def fetch_block_data(self, block_number: int) -> dict:
+        """
+        Fetch blockchain data for a specific block number.
+        """
+        url = f"{self.api_url}/block/{block_number}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            return data
+        else:
+            print(f"Error fetching block data: {response.status_code}")
+            return {}
+
+    def fetch_transaction_data(self, tx_id: str) -> dict:
+        """
+        Fetch blockchain transaction data for a specific transaction ID.
+        """
+        url = f"{self.api_url}/transaction/{tx_id}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            return data
+        else:
+            print(f"Error fetching transaction data: {response.status_code}")
+            return {}
+
+    def fetch_blockchain_data(self, start_block: int, end_block: int) -> pd.DataFrame:
+        """
+        Fetch blockchain data for a range of blocks.
+        """
+        blocks = []
+        for block_number in range(start_block, end_block + 1):
+            block_data = self.fetch_block_data(block_number)
+            if block_data:
+                blocks.append(block_data)
+        
+        self.data = pd.DataFrame(blocks)
+        return self.data
+
+    def analyze_transaction_volume(self) -> pd.DataFrame:
+        """
+        Analyze transaction volume over time.
+        """
+        if self.data.empty:
+            print("No blockchain data available. Please fetch blockchain data first.")
+            return pd.DataFrame()
+
+        self.data['transaction_count'] = self.data['transactions'].apply(lambda x: len(x))
+        volume_data = self.data[['block_number', 'transaction_count']]
+        volume_data.set_index('block_number', inplace=True)
+        return volume_data
+
+    def visualize_transaction_volume(self):
+        """
+        Visualize transaction volume over time.
+        """
+        if self.data.empty:
+            print("No blockchain data available. Please fetch blockchain data first.")
+            return
+
+        volume_data = self.analyze_transaction_volume()
+        plt.figure(figsize=(12, 6))
+        sns.lineplot(data=volume_data, x=volume_data.index, y='transaction_count')
+        plt.title('Blockchain Transaction Volume Over Time')
+        plt.xlabel('Block Number')
+        plt.ylabel('Transaction Count')
+        plt.grid(True)
+        plt.show()
+
+    def analyze_block_generation(self) -> pd.DataFrame:
+        """
+        Analyze block generation times.
+        """
+        if self.data.empty:
+            print("No blockchain data available. Please fetch blockchain data first.")
+            return pd.DataFrame()
+
+        self.data['timestamp'] = pd.to_datetime(self.data['timestamp'], unit='s')
+        self.data.sort_values(by='timestamp', inplace=True)
+        self.data['time_diff'] = self.data['timestamp'].diff().dt.total_seconds()
+        block_generation_data = self.data[['block_number', 'time_diff']]
+        return block_generation_data
+
+    def visualize_block_generation(self):
+        """
+        Visualize block generation times.
+        """
+        if self.data.empty:
+            print("No blockchain data available. Please fetch blockchain data first.")
+            return
+
+        block_generation_data = self.analyze_block_generation()
+        plt.figure(figsize=(12, 6))
+        sns.lineplot(data=block_generation_data, x='block_number', y='time_diff')
+        plt.title('Blockchain Block Generation Times')
+        plt.xlabel('Block Number')
+        plt.ylabel('Time Difference (Seconds)')
+        plt.grid(True)
+        plt.show()
+
+# Example usage
+if __name__ == "__main__":
+    api_url = 'https://api.yourblockchainprovider.com/v1'
+
+    chain_analytics_hub = ChainAnalyticsHub(api_url)
+    
+    # Fetch blockchain data
+    start_block = 1000000
+    end_block = 1000100
+    blockchain_data = chain_analytics_hub.fetch_blockchain_data(start_block, end_block)
+    
+    # Analyze transaction volume
+    transaction_volume = chain_analytics_hub.analyze_transaction_volume()
+    
+    # Visualize transaction volume
+    chain_analytics_hub.visualize_transaction_volume()
+    
+    # Analyze block generation times
+    block_generation = chain_analytics_hub.analyze_block_generation()
+    
+    # Visualize block generation times
+    chain_analytics_hub.visualize_block_generation()
